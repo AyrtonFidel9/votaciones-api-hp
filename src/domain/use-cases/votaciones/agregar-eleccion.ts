@@ -10,6 +10,6 @@ export class AgregarEleccion implements AgregarEleccionUseCase {
 	}
 
 	execute(eleccion: Eleccion): void {
-
+		this.votacionesRepository.agregarEleccion(eleccion);
 	}
 }

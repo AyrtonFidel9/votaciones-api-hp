@@ -1,11 +1,7 @@
 import * as grpc from '@grpc/grpc-js';
-import { Contract, Gateway, Identity, Signer } from '@hyperledger/fabric-gateway';
+import { Contract, Identity, Signer } from '@hyperledger/fabric-gateway';
+import { Connection } from './connection.interface';
 
-export interface Connection {
-	contract: Contract;
-	client: grpc.Client;
-	gateway: Gateway;
-}
 
 export interface ContractInterface {
 	newGrpConnection(): Promise<grpc.Client>;

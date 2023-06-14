@@ -7,7 +7,7 @@ dotenv.config();
 console.log(process.env.PORT);
 const port = process.env.PORT || 3001;
 
-server.use('/saludo', routes);
+server.use(routes);
 
 server.listen(process.env.PORT, () => {
 	console.log(`App listening on PORT ${port}`);
