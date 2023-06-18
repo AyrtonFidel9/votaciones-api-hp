@@ -1,8 +1,9 @@
 import { WalletsRepository } from '../interfaces/repositories/wallets.repository';
-import { Wallet, Wallets } from 'fabric-network';
+import { Identity } from 'fabric-network';
 import * as path from 'path';
 import { WalletDataSource } from '../../data/data-sources/wallet.data-source';
 import * as dotenv from 'dotenv';
+
 
 dotenv.config();
 
@@ -11,11 +12,15 @@ export class WalletsRepositoryImpl implements WalletsRepository {
 
 	walletDataSource: WalletDataSource;
 
+	msp: string;
+
 	constructor(_walletDS: WalletDataSource) {
 		this.walletDataSource = _walletDS;
+		this.msp = process.env.MSP_ID || '';
+
 	}
 
-	async createWallet(userId: string): Promise<Wallet> {
+	async createWallet(userId: string): Promise<Identity | undefined> {
 
 		const cpp = this.walletDataSource.buildCCPOrg();
 
@@ -26,40 +31,44 @@ export class WalletsRepositoryImpl implements WalletsRepository {
 
 		const wallet = await this.walletDataSource.buildWallet();
 
-		const msp: string = process.env.MSP_ID || '';
 		const admin: string = process.env.ADMIN || '';
 
 		await this.walletDataSource.registerAndEnrollUser(
 			caClient,
 			wallet,
-			msp,
+			this.msp,
 			userId,
 			process.env.AFFILIATION || '',
 			admin
 		);
 
-		console.log("--------------------------------------------->>>>>>>>>>>>>>");
-		console.log(wallet.get(userId));
-		return wallet;
+		return wallet.get(userId);
 	}
 
-	async getWallet(): Promise<Wallet> {
-		let wallet: Wallet;
-		wallet = await Wallets.newFileSystemWallet(this.walletPath);
-		return wallet;
+	async getWallet(userId: string): Promise<Identity | undefined> {
+		const wallet = await this.walletDataSource.buildWallet();
+		return wallet.get(userId);
 	}
 
-	async createAdmin(): Promise<Wallet> {
-		/* await this.walletDataSource.enrollAdmin(
+	async createAdmin(admin: string, passw: string): Promise<Identity | undefined> {
+
+		const cpp = this.walletDataSource.buildCCPOrg();
+
+		const caClient = this.walletDataSource.buildCAClient(
+			cpp,
+			process.env.CA_HOSTNAME || ''
+		);
+
+		const wallet = await this.walletDataSource.buildWallet();
+
+		await this.walletDataSource.enrollAdmin(
 			caClient,
 			wallet,
-			msp,
+			this.msp,
 			admin,
-			"1234",
-		); */
+			passw,
+		);
 
-		let wallet: Wallet;
-		wallet = await Wallets.newFileSystemWallet(this.walletPath);
-		return wallet;
+		return wallet.get(admin);
 	}
 }

@@ -1,5 +1,7 @@
+import { FabricError } from "fabric-network";
 import { AgregarEleccionUseCase, VotacionesRepository } from "../../interfaces";
-import { Eleccion } from "../../models";
+import { Eleccion, MsgRes } from "../../models";
+import { SubmitError } from "@hyperledger/fabric-gateway";
 
 export class AgregarEleccion implements AgregarEleccionUseCase {
 
@@ -9,7 +11,7 @@ export class AgregarEleccion implements AgregarEleccionUseCase {
 		this.votacionesRepository = _votacionesRepo;
 	}
 
-	execute(eleccion: Eleccion): void {
-		this.votacionesRepository.agregarEleccion(eleccion);
+	async execute(eleccion: Eleccion): Promise<MsgRes | FabricError | SubmitError> {
+		return await this.votacionesRepository.agregarEleccion(eleccion);
 	}
 }

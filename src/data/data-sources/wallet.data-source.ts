@@ -31,10 +31,6 @@ export class WalletDataSource implements WalletInterface {
 		const walletPath: string = path.resolve(__dirname, '..', '..', '..', process.env.WALLET_PATH || '');
 		let wallet: Wallet;
 		if (walletPath) {
-
-			// remove any pre-existing wallet from prior runs
-			fs.rmSync(walletPath, { recursive: true, force: true });
-
 			wallet = await Wallets.newFileSystemWallet(walletPath);
 			console.log(`Built a file system wallet at ${walletPath}`);
 		} else {
@@ -64,9 +60,6 @@ export class WalletDataSource implements WalletInterface {
 			},
 			caInfo.caName
 		);
-
-		console.log(caClient);
-
 		console.log(`Built a CA Client named ${caInfo.caName}`);
 		return caClient;
 	}
@@ -86,10 +79,10 @@ export class WalletDataSource implements WalletInterface {
 			}
 
 			// Enroll the admin user, and import the new identity into the wallet.
-			console.log("PASOO 1");
-			console.log(adminUserId, adminUserPasswd);
-			const enrollment = await caClient.enroll({ enrollmentID: adminUserId, enrollmentSecret: adminUserPasswd });
-			console.log("PASOO 2");
+			const enrollment = await caClient.enroll({
+				enrollmentID: adminUserId,
+				enrollmentSecret: adminUserPasswd
+			});
 
 			const x509Identity = {
 				credentials: {
@@ -118,6 +111,7 @@ export class WalletDataSource implements WalletInterface {
 
 			// Must use an admin to register a new user
 			const adminIdentity = await wallet.get(adminUserId);
+			console.log(adminIdentity);
 			if (!adminIdentity) {
 				console.log('An identity for the admin user does not exist in the wallet');
 				console.log('Enroll the admin user before retrying');

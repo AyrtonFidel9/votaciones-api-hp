@@ -1,7 +1,8 @@
+import { FabricError } from "fabric-network";
 import { ContractDataSource } from "../../data/data-sources";
 import { VotacionesRepository } from "../interfaces";
-import { Eleccion } from "../models";
-import { Contract } from '@hyperledger/fabric-gateway';
+import { Eleccion, MsgRes } from "../models";
+import { Contract, SubmitError } from '@hyperledger/fabric-gateway';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -18,17 +19,32 @@ export class VotacionesRepositoryImpl implements VotacionesRepository {
 		this.chaincodeName = process.env.CHAINCODE_NAME || '';
 	}
 
-	async agregarEleccion(eleccion: Eleccion): Promise<void> {
+	async agregarEleccion(eleccion: Eleccion):
+		Promise<MsgRes | FabricError | SubmitError> {
 		const connection = await this.contractDS.connectContract();
 		const { contract, client, gateway } = connection;
 
-		console.log(eleccion);
+		try {
+			await contract.submitTransaction(
+				"agregarEleccion",
+				eleccion.idEleccion.toString(),
+				eleccion.fecha,
+			);
 
-		await this.getInformationAboutSC(contract);
+			client.close();
+			gateway.close();
 
+			return ({
+				code: 200,
+				msg: "Elección agregada con éxito"
+			});
 
-		client.close();
-		gateway.close();
+		} catch (err: unknown) {
+			client.close();
+			gateway.close();
+			const error: SubmitError = err as SubmitError;
+			throw error.details[0];
+		}
 	}
 
 	terminarEleccion(idEleccion: number): void {

@@ -1,7 +1,7 @@
-import { Wallet } from "fabric-network";
+import { Identity } from 'fabric-network';
 
 export interface WalletsRepository {
-	createWallet(userId: string): Promise<Wallet>;
-	getWallet(): Promise<Wallet>;
-	createAdmin(): Promise<Wallet>;
+	createWallet(userId: string): Promise<Identity | undefined>;
+	getWallet(userId: string): Promise<Identity | undefined>;
+	createAdmin(admin: string, passw: string): Promise<Identity | undefined>;
 }

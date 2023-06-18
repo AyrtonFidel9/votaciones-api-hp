@@ -4,7 +4,7 @@ import { AgregarEleccion } from '../../domain/use-cases/votaciones';
 import { VotacionesRepositoryImpl } from '../../domain/repositories';
 import { ContractDataSource } from '../../data/data-sources';
 import { routerWallets } from './wallets.router';
-import { CrearWallet } from '../../domain/use-cases';
+import { CrearWallet, CrearWalletAdmin, ObtenerWallet } from '../../domain/use-cases';
 import { WalletsRepositoryImpl } from '../../domain/repositories/wallets.repository';
 import { WalletDataSource } from '../../data/data-sources/wallet.data-source';
 
@@ -18,7 +18,9 @@ const votacionesMiddleware = routerVotaciones(
 );
 
 const walletMiddleware = routerWallets(
-	new CrearWallet(new WalletsRepositoryImpl(walletDS))
+	new CrearWallet(new WalletsRepositoryImpl(walletDS)),
+	new CrearWalletAdmin(new WalletsRepositoryImpl(walletDS)),
+	new ObtenerWallet(new WalletsRepositoryImpl(walletDS)),
 );
 
 routes.use('/eleccion', votacionesMiddleware);

@@ -1,8 +1,8 @@
-import { CrearWalletUseCase } from '../../interfaces';
+import { CrearWalletAdminUseCase } from '../../interfaces';
 import { WalletsRepository } from '../../interfaces/repositories/wallets.repository';
 import { Identity } from 'fabric-network';
 
-export class CrearWallet implements CrearWalletUseCase {
+export class CrearWalletAdmin implements CrearWalletAdminUseCase {
 
 	walletsRepository: WalletsRepository;
 
@@ -10,8 +10,8 @@ export class CrearWallet implements CrearWalletUseCase {
 		this.walletsRepository = _walletsRepository;
 	}
 
-	async execute(userId: string): Promise<Identity | undefined> {
-		const res = await this.walletsRepository.createWallet(userId);
+	async execute(adminId: string, passw: string): Promise<Identity | undefined> {
+		const res = await this.walletsRepository.createAdmin(adminId, passw);
 		return res;
 	}
 }
