@@ -1,4 +1,7 @@
 import { TerminarEleccionUseCase, VotacionesRepository } from "../../interfaces";
+import { MsgRes } from "../../models";
+import { FabricError } from "fabric-network";
+import { SubmitError } from "@hyperledger/fabric-gateway";
 
 export class TerminarEleccion implements TerminarEleccionUseCase {
 
@@ -8,7 +11,7 @@ export class TerminarEleccion implements TerminarEleccionUseCase {
 		this.votacionesRepository = _votacionesRepo;
 	}
 
-	execute(idEleccion: number): void {
-
+	async execute(idEleccion: number): Promise<MsgRes | FabricError | SubmitError> {
+		return await this.votacionesRepository.terminarEleccion(idEleccion);
 	}
 }

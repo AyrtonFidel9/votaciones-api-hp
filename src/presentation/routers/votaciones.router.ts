@@ -1,9 +1,13 @@
 import express, { Request, Response } from 'express';
-import { AgregarEleccionUseCase } from '../../domain/interfaces';
+import { AgregarEleccionUseCase, SufragarUseCase, TerminarEleccionUseCase, TransferirTokenUseCase } from '../../domain/interfaces';
 import { MsgRes } from '../../domain/models';
 
 const routerVotaciones = (
-	agregarEleccion: AgregarEleccionUseCase
+	agregarEleccion: AgregarEleccionUseCase,
+	terminarEleccion: TerminarEleccionUseCase,
+	sufragar: SufragarUseCase,
+	transferirToken: TransferirTokenUseCase,
+
 ) => {
 	const router = express.Router();
 
@@ -15,7 +19,9 @@ const routerVotaciones = (
 				...req.body
 			}) as MsgRes;
 
-			return res.status(resp.code).send(resp.msg);
+			return res.status(resp.code).send({
+				message: resp.msg
+			});
 		} catch (ex) {
 			return res.status(400).send({
 				message: ex
@@ -23,18 +29,42 @@ const routerVotaciones = (
 		}
 	});
 
-	router.get('/', (req: Request, res: Response): void => {
+	router.put('/terminar-eleccion', async (req: Request, res: Response):
+		Promise<Response<any, Record<string, any>>> => {
 		try {
-
-			console.log(req.body);
-		} catch {
-
+			const { idEleccion } = req.body;
+			const resp = await terminarEleccion.execute(idEleccion) as MsgRes;
+			return res.status(resp.code).send({
+				message: resp.msg
+			});
+		} catch (ex) {
+			console.log(ex);
+			return res.status(400).send({
+				message: ex
+			});
 		}
 	});
+
+	router.post('/enviar-token', async (req: Request, res: Response):
+		Promise<Response<any, Record<string, any>>> => {
+		try {
+			const { socioID } = req.body;
+
+			const resp = await transferirToken.execute(socioID) as MsgRes;
+
+			return res.status(resp.code).send({
+				message: resp.msg
+			});
+
+		} catch (ex) {
+			console.log(ex);
+			return res.status(400).send({
+				message: ex
+			});
+		}
+	});
+
 	return router;
 }
-
-
-
 
 export { routerVotaciones };
