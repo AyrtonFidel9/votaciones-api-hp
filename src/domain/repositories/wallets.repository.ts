@@ -4,7 +4,6 @@ import * as path from 'path';
 import { WalletDataSource } from '../../data/data-sources/wallet.data-source';
 import * as dotenv from 'dotenv';
 
-
 dotenv.config();
 
 export class WalletsRepositoryImpl implements WalletsRepository {
@@ -17,7 +16,6 @@ export class WalletsRepositoryImpl implements WalletsRepository {
 	constructor(_walletDS: WalletDataSource) {
 		this.walletDataSource = _walletDS;
 		this.msp = process.env.MSP_ID || '';
-
 	}
 
 	async createWallet(userId: string): Promise<Identity | undefined> {
@@ -33,16 +31,21 @@ export class WalletsRepositoryImpl implements WalletsRepository {
 
 		const admin: string = process.env.ADMIN || '';
 
-		await this.walletDataSource.registerAndEnrollUser(
-			caClient,
-			wallet,
-			this.msp,
-			userId,
-			process.env.AFFILIATION || '',
-			admin
-		);
+		try {
 
-		return wallet.get(userId);
+			await this.walletDataSource.registerAndEnrollUser(
+				caClient,
+				wallet,
+				this.msp,
+				userId,
+				process.env.AFFILIATION || '',
+				admin
+			);
+
+			return wallet.get(userId);
+		} catch (ex) {
+			throw ex;
+		}
 	}
 
 	async getWallet(userId: string): Promise<Identity | undefined> {

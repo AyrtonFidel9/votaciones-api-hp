@@ -31,6 +31,8 @@ export class WalletDataSource implements WalletInterface {
 		const walletPath: string = path.resolve(__dirname, '..', '..', '..', process.env.WALLET_PATH || '');
 		let wallet: Wallet;
 		if (walletPath) {
+			//fs.rmSync(walletPath, { recursive: true, force: true });
+
 			wallet = await Wallets.newFileSystemWallet(walletPath);
 			console.log(`Built a file system wallet at ${walletPath}`);
 		} else {
@@ -104,14 +106,16 @@ export class WalletDataSource implements WalletInterface {
 		try {
 			// Check to see if we've already enrolled the user
 			const userIdentity = await wallet.get(userId);
+
+			console.log(userIdentity);
+
 			if (userIdentity) {
-				console.log(`An identity for the user ${userId} already exists in the wallet`);
-				return;
+				throw new Error(`An identity for the user ${userId} already exists in the wallet`);
 			}
+
 
 			// Must use an admin to register a new user
 			const adminIdentity = await wallet.get(adminUserId);
-			console.log(adminIdentity);
 			if (!adminIdentity) {
 				console.log('An identity for the admin user does not exist in the wallet');
 				console.log('Enroll the admin user before retrying');
@@ -144,7 +148,7 @@ export class WalletDataSource implements WalletInterface {
 			await wallet.put(userId, x509Identity);
 			console.log(`Successfully registered and enrolled user ${userId} and imported it into the wallet`);
 		} catch (error) {
-			console.error(`Failed to register user : ${error}`);
+			throw error;
 		}
 
 	}

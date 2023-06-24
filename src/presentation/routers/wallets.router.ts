@@ -14,9 +14,10 @@ const routerWallets = (
 			const { userId } = req.body;
 			const data = await crearWallet.execute(userId);
 			return res.status(200).send(data);
-		} catch {
+		} catch (ex) {
 			return res.status(400).send({
-				message: "Ha ocurrido un error al ingresar la billetera"
+				message: "Ha ocurrido un error al ingresar la billetera",
+				messageTwo: ex
 			});
 		}
 	});

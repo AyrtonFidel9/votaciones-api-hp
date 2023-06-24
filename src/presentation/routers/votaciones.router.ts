@@ -38,6 +38,7 @@ const routerVotaciones = (
 				message: resp.msg
 			});
 		} catch (ex) {
+			console.log("----------------------------------");
 			console.log(ex);
 			return res.status(400).send({
 				message: ex
@@ -51,6 +52,35 @@ const routerVotaciones = (
 			const { socioID } = req.body;
 
 			const resp = await transferirToken.execute(socioID) as MsgRes;
+
+			return res.status(resp.code).send({
+				message: resp.msg
+			});
+
+		} catch (ex) {
+			console.log(ex);
+			return res.status(400).send({
+				message: ex
+			});
+		}
+	});
+
+	router.post('/sufragar', async (req: Request, res: Response):
+		Promise<Response<any, Record<string, any>>> => {
+		try {
+			const {
+				idEleccion,
+				lista,
+				fecha,
+				socioID
+			} = req.body;
+
+			const resp = await sufragar.execute(
+				idEleccion,
+				lista,
+				fecha,
+				socioID
+			) as MsgRes;
 
 			return res.status(resp.code).send({
 				message: resp.msg

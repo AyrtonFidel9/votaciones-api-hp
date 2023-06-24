@@ -15,10 +15,10 @@ const contractDS = new ContractDataSource();
 const walletDS = new WalletDataSource();
 
 const votacionesMiddleware = routerVotaciones(
-	new AgregarEleccion(new VotacionesRepositoryImpl(contractDS)),
-	new TerminarEleccion(new VotacionesRepositoryImpl(contractDS)),
-	new Sufragar(new VotacionesRepositoryImpl(contractDS)),
-	new TransferirToken(new VotacionesRepositoryImpl(contractDS)),
+	new AgregarEleccion(new VotacionesRepositoryImpl(contractDS, walletDS)),
+	new TerminarEleccion(new VotacionesRepositoryImpl(contractDS, walletDS)),
+	new Sufragar(new VotacionesRepositoryImpl(contractDS, walletDS)),
+	new TransferirToken(new VotacionesRepositoryImpl(contractDS, walletDS)),
 );
 
 const walletMiddleware = routerWallets(

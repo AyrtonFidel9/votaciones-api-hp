@@ -1,22 +1,25 @@
-import { FabricError } from "fabric-network";
+import { FabricError, Gateway, GatewayOptions } from "fabric-network";
 import { ContractDataSource } from "../../data/data-sources";
 import { VotacionesRepository } from "../interfaces";
 import { Eleccion, MsgRes } from "../models";
-import { Contract, Gateway, SubmitError } from '@hyperledger/fabric-gateway';
+import { Contract, SubmitError } from '@hyperledger/fabric-gateway';
 import * as dotenv from 'dotenv';
+import { WalletDataSource } from "../../data/data-sources/wallet.data-source";
 dotenv.config();
 
 
 export class VotacionesRepositoryImpl implements VotacionesRepository {
 	contractDS: ContractDataSource;
+	walletDataSource: WalletDataSource;
 
 	channelName: string;
 	chaincodeName: string;
 
-	constructor(_contractDS: ContractDataSource) {
+	constructor(_contractDS: ContractDataSource, _walletDS: WalletDataSource) {
 		this.contractDS = _contractDS;
 		this.channelName = process.env.CHANNEL_NAME || '';
 		this.chaincodeName = process.env.CHAINCODE_NAME || '';
+		this.walletDataSource = _walletDS;
 	}
 
 	async agregarEleccion(eleccion: Eleccion):
@@ -74,19 +77,57 @@ export class VotacionesRepositoryImpl implements VotacionesRepository {
 		}
 	}
 
-	async sufragar(idEleccion: number, lista: string, fecha: string):
+	async sufragar(idEleccion: number, lista: string, fecha: string, socioID: string):
 		Promise<MsgRes | FabricError | SubmitError> {
+		const cpp = this.walletDataSource.buildCCPOrg();
 
-		return ({
-			code: 200,
-			msg: 'dsa',
-		});
+		const connection = await this.contractDS.connectContract();
+		const { contract, client, gateway } = connection;
+
+
+		const wallet = await this.walletDataSource.buildWallet();
+
+		const gateway2 = new Gateway();
+
+		const gatewayOpts: GatewayOptions = {
+			wallet,
+			identity: socioID,
+			//revisar despues de desplegar en la red principal
+			discovery: { enabled: true, asLocalhost: false }, // using asLocalhost as this gateway is using a fabric network deployed locally
+		};
+
+		try {
+
+
+			await gateway2.connect(cpp, gatewayOpts);
+			// Build a network instance based on the channel where the smart contract is deployed
+			const network = await gateway.getNetwork(this.channelName);
+			// Get the contract from the network.
+			const contract = network.getContract(this.chaincodeName);
+
+			await contract.submitTransaction(
+				"sufragar",
+				idEleccion.toString(),
+				lista,
+				fecha
+			);
+			gateway2.disconnect();
+			gateway.close();
+			return ({
+				code: 200,
+				msg: 'Voto enviado con éxito',
+			});
+		} catch (err: unknown) {
+			gateway2.disconnect();
+			gateway.close();
+			const error: SubmitError = err as SubmitError;
+			throw error.details[0];
+		}
 	}
 
 	async enviarToken(socioID: string): Promise<MsgRes | FabricError | SubmitError> {
 		const connection = await this.contractDS.connectContract();
 		const { contract, client, gateway } = connection;
-
 
 		try {
 
@@ -104,11 +145,12 @@ export class VotacionesRepositoryImpl implements VotacionesRepository {
 				});
 			}
 
-			await contract.submitTransaction(
+			const resP = await contract.submitTransaction(
 				"Transfer",
 				socioID,
 				"1"
 			);
+			console.log(resP);
 
 			/* await contract.submitTransaction(
 				"Mint",
@@ -126,13 +168,11 @@ export class VotacionesRepositoryImpl implements VotacionesRepository {
 		} catch (err: unknown) {
 			client.close();
 			gateway.close();
+			console.log(err);
 			const error: SubmitError = err as SubmitError;
 			throw error.details[0];
 		}
 	}
-
-
-
 
 	async getInformationAboutSC(contract: Contract): Promise<void> {
 		const utf8Decoder = new TextDecoder();
