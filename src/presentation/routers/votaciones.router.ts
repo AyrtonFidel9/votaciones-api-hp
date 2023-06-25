@@ -1,5 +1,12 @@
 import express, { Request, Response } from 'express';
-import { AgregarEleccionUseCase, SufragarUseCase, TerminarEleccionUseCase, TransferirTokenUseCase } from '../../domain/interfaces';
+import {
+	AgregarEleccionUseCase,
+	ObtenerBalanceUseCase,
+	SufragarUseCase,
+	TerminarEleccionUseCase,
+	TransferirTokenUseCase
+}
+	from '../../domain/interfaces';
 import { MsgRes } from '../../domain/models';
 
 const routerVotaciones = (
@@ -7,7 +14,7 @@ const routerVotaciones = (
 	terminarEleccion: TerminarEleccionUseCase,
 	sufragar: SufragarUseCase,
 	transferirToken: TransferirTokenUseCase,
-
+	obtenerBalance: ObtenerBalanceUseCase
 ) => {
 	const router = express.Router();
 
@@ -38,7 +45,6 @@ const routerVotaciones = (
 				message: resp.msg
 			});
 		} catch (ex) {
-			console.log("----------------------------------");
 			console.log(ex);
 			return res.status(400).send({
 				message: ex
@@ -90,6 +96,26 @@ const routerVotaciones = (
 			console.log(ex);
 			return res.status(400).send({
 				message: ex
+			});
+		}
+	});
+
+	router.get('/balance', async (req: Request, res: Response):
+		Promise<Response<any, Record<string, any>>> => {
+		try {
+			const userId = req.query.userId as string;
+			const data = await obtenerBalance.execute(userId);
+			if (data)
+				return res.status(200).send({
+					tokens: data
+				});
+			else
+				return res.status(400).send({
+					message: "No existe balance para este usuario, compruebe que este registrado"
+				});
+		} catch {
+			return res.status(400).send({
+				message: "Ha ocurrido un error al recuperar el balance"
 			});
 		}
 	});

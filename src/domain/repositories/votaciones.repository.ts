@@ -1,10 +1,11 @@
-import { FabricError, Gateway, GatewayOptions } from "fabric-network";
 import { ContractDataSource } from "../../data/data-sources";
 import { VotacionesRepository } from "../interfaces";
 import { Eleccion, MsgRes } from "../models";
-import { Contract, SubmitError } from '@hyperledger/fabric-gateway';
+import { Contract, Identity, SubmitError } from '@hyperledger/fabric-gateway';
 import * as dotenv from 'dotenv';
+import * as path from "path";
 import { WalletDataSource } from "../../data/data-sources/wallet.data-source";
+
 dotenv.config();
 
 
@@ -14,17 +15,24 @@ export class VotacionesRepositoryImpl implements VotacionesRepository {
 
 	channelName: string;
 	chaincodeName: string;
+	certPath: string;
+	keyDirectoryPath: string;
 
 	constructor(_contractDS: ContractDataSource, _walletDS: WalletDataSource) {
 		this.contractDS = _contractDS;
 		this.channelName = process.env.CHANNEL_NAME || '';
 		this.chaincodeName = process.env.CHAINCODE_NAME || '';
 		this.walletDataSource = _walletDS;
+		this.keyDirectoryPath = path.resolve(__dirname, '..', '..', '..', process.env.KEY_DIRECTORY_PATH || '');
+		this.certPath = path.resolve(__dirname, '..', '..', '..', process.env.CERT_PATH || '');
 	}
 
 	async agregarEleccion(eleccion: Eleccion):
-		Promise<MsgRes | FabricError | SubmitError> {
-		const connection = await this.contractDS.connectContract();
+		Promise<MsgRes | SubmitError> {
+		const connection = await this.contractDS.connectContract(
+			this.certPath,
+			this.keyDirectoryPath
+		);
 		const { contract, client, gateway } = connection;
 
 		try {
@@ -51,8 +59,11 @@ export class VotacionesRepositoryImpl implements VotacionesRepository {
 	}
 
 	async terminarEleccion(idEleccion: number):
-		Promise<MsgRes | FabricError | SubmitError> {
-		const connection = await this.contractDS.connectContract();
+		Promise<MsgRes | SubmitError> {
+		const connection = await this.contractDS.connectContract(
+			this.certPath,
+			this.keyDirectoryPath
+		);
 		const { contract, client, gateway } = connection;
 
 		try {
@@ -78,32 +89,32 @@ export class VotacionesRepositoryImpl implements VotacionesRepository {
 	}
 
 	async sufragar(idEleccion: number, lista: string, fecha: string, socioID: string):
-		Promise<MsgRes | FabricError | SubmitError> {
+		Promise<MsgRes | SubmitError> {
 		const cpp = this.walletDataSource.buildCCPOrg();
-
-		const connection = await this.contractDS.connectContract();
-		const { contract, client, gateway } = connection;
-
 
 		const wallet = await this.walletDataSource.buildWallet();
 
-		const gateway2 = new Gateway();
+		const walletSocio = await wallet.get(socioID);
 
-		const gatewayOpts: GatewayOptions = {
-			wallet,
-			identity: socioID,
-			//revisar despues de desplegar en la red principal
-			discovery: { enabled: true, asLocalhost: false }, // using asLocalhost as this gateway is using a fabric network deployed locally
-		};
+		if (typeof walletSocio === 'undefined') {
+			return ({
+				code: 400,
+				msg: 'El sufragante no existe o no esta registrado',
+			});
+		}
+
+		const jsonWS = JSON.stringify(walletSocio);
+		const identitySocio: Identity = JSON.parse(jsonWS);
+		const signerSocio: Identity = JSON.parse(jsonWS);
+
+		const connection = await this.contractDS.connectContract(
+			identitySocio,
+			signerSocio
+		);
+
+		const { contract, client, gateway } = connection;
 
 		try {
-
-
-			await gateway2.connect(cpp, gatewayOpts);
-			// Build a network instance based on the channel where the smart contract is deployed
-			const network = await gateway.getNetwork(this.channelName);
-			// Get the contract from the network.
-			const contract = network.getContract(this.chaincodeName);
 
 			await contract.submitTransaction(
 				"sufragar",
@@ -111,22 +122,25 @@ export class VotacionesRepositoryImpl implements VotacionesRepository {
 				lista,
 				fecha
 			);
-			gateway2.disconnect();
 			gateway.close();
+			client.close();
 			return ({
 				code: 200,
 				msg: 'Voto enviado con éxito',
 			});
 		} catch (err: unknown) {
-			gateway2.disconnect();
 			gateway.close();
+			client.close();
 			const error: SubmitError = err as SubmitError;
 			throw error.details[0];
 		}
 	}
 
-	async enviarToken(socioID: string): Promise<MsgRes | FabricError | SubmitError> {
-		const connection = await this.contractDS.connectContract();
+	async enviarToken(socioID: string): Promise<MsgRes | SubmitError> {
+		const connection = await this.contractDS.connectContract(
+			this.certPath,
+			this.keyDirectoryPath
+		);
 		const { contract, client, gateway } = connection;
 
 		try {
@@ -152,11 +166,6 @@ export class VotacionesRepositoryImpl implements VotacionesRepository {
 			);
 			console.log(resP);
 
-			/* await contract.submitTransaction(
-				"Mint",
-				"12000"
-			); */
-
 			client.close();
 			gateway.close();
 
@@ -164,6 +173,31 @@ export class VotacionesRepositoryImpl implements VotacionesRepository {
 				code: 200,
 				msg: "Token fondeado con éxito"
 			});
+
+		} catch (err: unknown) {
+			client.close();
+			gateway.close();
+			console.log(err);
+			const error: SubmitError = err as SubmitError;
+			throw error.details[0];
+		}
+	}
+
+	async obtenerBalance(userId: string): Promise<number> {
+		const connection = await this.contractDS.connectContract(
+			this.certPath,
+			this.keyDirectoryPath
+		);
+		const { contract, client, gateway } = connection;
+
+		try {
+
+			const utf8Decoder = new TextDecoder();
+			//			await this.getInformationAboutSC(contract);
+			const bytesBalance = await contract.evaluateTransaction('BalanceOf', userId);
+			const jsonBalance = utf8Decoder.decode(bytesBalance);
+			const tokens: number = Number.parseInt(jsonBalance);
+			return tokens;
 
 		} catch (err: unknown) {
 			client.close();

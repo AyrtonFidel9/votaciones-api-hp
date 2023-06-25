@@ -14,13 +14,9 @@ export class ContractDataSource implements ContractInterface {
 	channelName: string;
 	chaincodeName: string;
 	mspId: string;
-	keyDirectoryPath: string;
-	certPath: PathLike | FileHandle;
 	tlsCertPath: PathLike | FileHandle;
 	peerEndpoint: string;
 	peerHostAlias?: string;
-	//cryptoPath = path.resolve(__dirname, '..', '..', '..', '..', '..', 'fabric-samples', 'test-network', 'organizations', 'peerOrganizations', 'org1.example.com');
-
 
 	constructor() {
 		this.channelName = process.env.CHANNEL_NAME || '';
@@ -28,22 +24,20 @@ export class ContractDataSource implements ContractInterface {
 		this.mspId = process.env.MSP_ID || '';
 
 		this.tlsCertPath = path.resolve(__dirname, '..', '..', '..', process.env.TLS_CERT_PATH || '');
-		this.keyDirectoryPath = path.resolve(__dirname, '..', '..', '..', process.env.KEY_DIRECTORY_PATH || '');
 
 		this.peerEndpoint = process.env.PEER_ENDPOINT || '';
 		this.peerHostAlias = process.env.PEER_HOST_ALIAS;
-		this.certPath = path.resolve(__dirname, '..', '..', '..', process.env.CERT_PATH || '');
-		//this.tlsCertPath = path.resolve(this.cryptoPath, 'peers', 'peer0.org1.example.com', 'tls', 'ca.crt');
-		//this.keyDirectoryPath = path.resolve(this.cryptoPath, 'users', 'User1@org1.example.com', 'msp', 'keystore');
-		//this.certPath = path.resolve(this.cryptoPath, 'users', 'User1@org1.example.com', 'msp', 'signcerts', 'User1@org1.example.com-cert.pem');
+
 	}
 
-	async connectContract(): Promise<Connection> {
+	async connectContract(credentials: Identity | string, privateKey: Identity | string): Promise<Connection> {
 		const client = await this.newGrpConnection();
+		console.log(await this.newIdentity(credentials));
+		console.log(await this.newSigner(privateKey));
 		const gateway = connect({
 			client,
-			identity: await this.newIdentity(),
-			signer: await this.newSigner(),
+			identity: await this.newIdentity(credentials),
+			signer: await this.newSigner(privateKey),
 
 			evaluateOptions: () => {
 				return { deadline: Date.now() + 5000 }; // 5 seconds
@@ -62,7 +56,6 @@ export class ContractDataSource implements ContractInterface {
 		const network = gateway.getNetwork(this.channelName);
 		const contract = network.getContract(this.chaincodeName);
 
-
 		return { contract, client, gateway };
 	}
 
@@ -74,16 +67,39 @@ export class ContractDataSource implements ContractInterface {
 		});
 	}
 
-	async newIdentity(): Promise<Identity> {
-		const credentials = await fs.readFile(this.certPath);
+
+	async newIdentity(_credentials: string | Identity): Promise<Identity> {
+		let credentials: Buffer;
+		if (typeof _credentials === 'string')
+			credentials = await fs.readFile(_credentials);
+		else if (typeof _credentials === 'undefined')
+			throw "No se han proporcionado las credenciales"
+		else {
+			const certificate: string = JSON.parse(
+				JSON.stringify(_credentials.credentials)
+			).certificate;
+			credentials = Buffer.from(certificate);
+		}
+
 		return { mspId: this.mspId, credentials };
 	}
 
-	async newSigner(): Promise<Signer> {
-		const files = await fs.readdir(this.keyDirectoryPath);
-		const keyPath = path.resolve(this.keyDirectoryPath, files[0]);
-		const privateKeyPem = await fs.readFile(keyPath);
-		const privateKey = crypto.createPrivateKey(privateKeyPem);
+	async newSigner(_privateKeyPem: Identity | string): Promise<Signer> {
+
+		let privateKey: crypto.KeyObject;
+
+		if (typeof _privateKeyPem === 'string') {
+			const files = await fs.readdir(_privateKeyPem);
+			const keyPath = path.resolve(_privateKeyPem, files[0]);
+			const privateKeyPem = await fs.readFile(keyPath);
+			privateKey = crypto.createPrivateKey(privateKeyPem);
+		} else {
+			const pk: string = JSON.parse(
+				JSON.stringify(_privateKeyPem.credentials)
+			).privateKey;
+			const buffer: Buffer = Buffer.from(pk);
+			privateKey = crypto.createPrivateKey(buffer);
+		}
 		return signers.newPrivateKeySigner(privateKey);
 	}
 

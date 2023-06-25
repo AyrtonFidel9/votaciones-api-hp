@@ -8,6 +8,7 @@ import { CrearWallet, CrearWalletAdmin, ObtenerWallet } from '../../domain/use-c
 import { WalletsRepositoryImpl } from '../../domain/repositories/wallets.repository';
 import { WalletDataSource } from '../../data/data-sources/wallet.data-source';
 import { TransferirToken } from '../../domain/use-cases/votaciones/transferir-token';
+import { ObtenerBalance } from '../../domain/use-cases/votaciones/obtener-balance';
 
 const routes = express.Router();
 
@@ -19,6 +20,7 @@ const votacionesMiddleware = routerVotaciones(
 	new TerminarEleccion(new VotacionesRepositoryImpl(contractDS, walletDS)),
 	new Sufragar(new VotacionesRepositoryImpl(contractDS, walletDS)),
 	new TransferirToken(new VotacionesRepositoryImpl(contractDS, walletDS)),
+	new ObtenerBalance(new VotacionesRepositoryImpl(contractDS, walletDS))
 );
 
 const walletMiddleware = routerWallets(

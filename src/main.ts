@@ -2,6 +2,7 @@ import server from './server';
 import dotenv from 'dotenv';
 import { routes } from './presentation/routers';
 import { ContractDataSource } from './data/data-sources';
+import * as path from "path";
 
 const contractDS = new ContractDataSource();
 
@@ -10,10 +11,16 @@ dotenv.config();
 console.log(process.env.PORT);
 const port = process.env.PORT || 3001;
 
+const keyDirectoryPath = path.resolve(__dirname, '..', process.env.KEY_DIRECTORY_PATH || '');
+const certPath = path.resolve(__dirname, '..', process.env.CERT_PATH || '');
+
 server.use("/api/v1", routes);
 
 server.listen(process.env.PORT, async () => {
-	const connection = await contractDS.connectContract();
+	const connection = await contractDS.connectContract(
+		certPath,
+		keyDirectoryPath
+	);
 	const { contract, client, gateway } = connection;
 
 	try {
